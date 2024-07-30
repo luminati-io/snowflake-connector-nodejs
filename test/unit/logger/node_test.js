@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2015-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 const NodeLogger = require('./../../../lib/logger/node');
@@ -226,7 +226,7 @@ describe('Logger node tests', function () {
 
   async function closeTransportsWithTimeout(logger) {
     logger.closeTransports();
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       setTimeout(() => {
         resolve();
       }, millisTimeoutToFlushLogFile);

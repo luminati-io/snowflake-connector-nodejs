@@ -1,12 +1,11 @@
 /*
- * Copyright (c) 2015-2023 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2015-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 const assert = require('assert');
 const ResultTestCommon = require('./result_test_common');
 const RowMode = require('./../../../../lib/constants/row_mode');
 const ColumnNamesCreator = require('../../../../lib/connection/result/unique_column_name_creator');
-const { addoverriddenNamesForDuplicatedColumns } = require('../../../../lib/connection/result/unique_column_name_creator');
 
 describe('Unique column names', function () {
   describe('result contains renamed columns depend on row mode', function () {
