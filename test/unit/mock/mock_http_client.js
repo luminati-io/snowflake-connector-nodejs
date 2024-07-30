@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2015-2019 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2015-2024 Snowflake Computing Inc. All rights reserved.
  */
 
-var Util = require('../../../lib/util');
-var Errors = require('../../../lib/errors');
+const Util = require('../../../lib/util');
+const Errors = require('../../../lib/errors');
 const Logger = require('../../../lib/logger');
 
 /**
@@ -45,12 +45,12 @@ MockHttpClient.prototype.request = function (request) {
   }
 
   // get the output of the specified request from the map
-  var requestOutput = this._mapRequestToOutput[serializeRequest(request)];
+  const requestOutput = this._mapRequestToOutput[serializeRequest(request)];
 
   Errors.assertInternal(Util.isObject(requestOutput),
     'no response available for: ' + serializeRequest(request));
 
-  var delay = Util.isNumber(requestOutput.delay) ? requestOutput.delay : 0;
+  const delay = Util.isNumber(requestOutput.delay) ? requestOutput.delay : 0;
 
   // invoke the callback with the right arguments in a future tick of the event
   // loop; note that we don't use process.nextTick() here because if we did, the
@@ -60,8 +60,8 @@ MockHttpClient.prototype.request = function (request) {
   setTimeout(function () {
     // get the response from the output and clone it; this is to prevent tests
     // from interfering with each other if they mutate the response
-    var response = JSON.parse(JSON.stringify(requestOutput.response));
-    var body = requestOutput.body;
+    const response = JSON.parse(JSON.stringify(requestOutput.response));
+    let body = requestOutput.body;
 
     if (!body && response) {
       body = response.body;
@@ -111,10 +111,10 @@ MockHttpClient.prototype.requestAsync = function (request) {
  * @returns {Object}
  */
 function buildRequestToOutputMap(mappings) {
-  var mapRequestToOutput = {};
+  const mapRequestToOutput = {};
 
-  var mapping;
-  for (var index = 0, length = mappings.length; index < length; index++) {
+  let mapping;
+  for (let index = 0, length = mappings.length; index < length; index++) {
     mapping = mappings[index];
     const k = serializeRequest(mapping.request);
     if (mapRequestToOutput[k]) {
@@ -153,9 +153,9 @@ function serializeRequest(request) {
  * @returns {*}
  */
 function createSortedClone(target) {
-  var keysSorted;
-  var sortedClone;
-  var index, length, key;
+  let keysSorted;
+  let sortedClone;
+  let index, length, key;
 
   if (Util.isObject(target)) {
     keysSorted = Object.keys(target).sort();
@@ -203,7 +203,10 @@ function buildRequestOutputMappings(clientInfo) {
                   CLIENT_APP_ID: 'JavaScript',
                   CLIENT_APP_VERSION: clientInfo.version,
                   CLIENT_ENVIRONMENT: clientInfo.environment,
-                  SESSION_PARAMETERS: {}
+                  SESSION_PARAMETERS: {
+                    CLIENT_REQUEST_MFA_TOKEN: false,
+                    CLIENT_STORE_TEMPORARY_CREDENTIAL: false,
+                  }
                 }
             }
         },
@@ -1220,7 +1223,10 @@ function buildRequestOutputMappings(clientInfo) {
                   CLIENT_APP_ID: 'JavaScript',
                   CLIENT_APP_VERSION: clientInfo.version,
                   CLIENT_ENVIRONMENT: clientInfo.environment,
-                  SESSION_PARAMETERS: {}
+                  SESSION_PARAMETERS: {
+                    CLIENT_REQUEST_MFA_TOKEN: false,
+                    CLIENT_STORE_TEMPORARY_CREDENTIAL: false,
+                  }
                 }
             }
         },
@@ -1439,7 +1445,9 @@ function buildRequestOutputMappings(clientInfo) {
                   CLIENT_ENVIRONMENT: clientInfo.environment,
                   SESSION_PARAMETERS: {
                     CLIENT_SESSION_KEEP_ALIVE: true,
-                    CLIENT_SESSION_KEEP_ALIVE_HEARTBEAT_FREQUENCY: 1800
+                    CLIENT_SESSION_KEEP_ALIVE_HEARTBEAT_FREQUENCY: 1800,
+                    CLIENT_REQUEST_MFA_TOKEN: false,
+                    CLIENT_STORE_TEMPORARY_CREDENTIAL: false,
                   }
                 }
             }
@@ -1546,6 +1554,8 @@ function buildRequestOutputMappings(clientInfo) {
                   CLIENT_ENVIRONMENT: clientInfo.environment,
                   SESSION_PARAMETERS: {
                     JS_TREAT_INTEGER_AS_BIGINT: true,
+                    CLIENT_REQUEST_MFA_TOKEN: false,                 
+                    CLIENT_STORE_TEMPORARY_CREDENTIAL: false,
                   }
                 }
             }
@@ -1651,7 +1661,10 @@ function buildRequestOutputMappings(clientInfo) {
                   CLIENT_APP_ID: 'JavaScript',
                   CLIENT_APP_VERSION: clientInfo.version,
                   CLIENT_ENVIRONMENT: clientInfo.environment,
-                  SESSION_PARAMETERS: {}
+                  SESSION_PARAMETERS: {
+                    CLIENT_REQUEST_MFA_TOKEN: false,
+                    CLIENT_STORE_TEMPORARY_CREDENTIAL: false,
+                  }
                 }
             }
         },
@@ -1741,7 +1754,10 @@ function buildRequestOutputMappings(clientInfo) {
                   CLIENT_APP_ID: 'JavaScript',
                   CLIENT_APP_VERSION: clientInfo.version,
                   CLIENT_ENVIRONMENT: clientInfo.environment,
-                  SESSION_PARAMETERS: {}
+                  SESSION_PARAMETERS: {
+                    CLIENT_REQUEST_MFA_TOKEN: false,
+                    CLIENT_STORE_TEMPORARY_CREDENTIAL: false,
+                  }
                 }
             }
         },
@@ -1830,7 +1846,10 @@ function buildRequestOutputMappings(clientInfo) {
                   CLIENT_APP_ID: 'JavaScript',
                   CLIENT_APP_VERSION: clientInfo.version,
                   CLIENT_ENVIRONMENT: clientInfo.environment,
-                  SESSION_PARAMETERS: {}
+                  SESSION_PARAMETERS: {
+                    CLIENT_REQUEST_MFA_TOKEN: false,
+                    CLIENT_STORE_TEMPORARY_CREDENTIAL: false,
+                  }
                 }
             }
         },
@@ -1869,7 +1888,10 @@ function buildRequestOutputMappings(clientInfo) {
                   CLIENT_APP_ID: 'JavaScript',
                   CLIENT_APP_VERSION: clientInfo.version,
                   CLIENT_ENVIRONMENT: clientInfo.environment,
-                  SESSION_PARAMETERS: {}
+                  SESSION_PARAMETERS: {
+                    CLIENT_REQUEST_MFA_TOKEN: false,
+                    CLIENT_STORE_TEMPORARY_CREDENTIAL: false,
+                  }
                 }
             }
         },
@@ -1907,7 +1929,10 @@ function buildRequestOutputMappings(clientInfo) {
                   CLIENT_APP_ID: 'JavaScript',
                   CLIENT_APP_VERSION: clientInfo.version,
                   CLIENT_ENVIRONMENT: clientInfo.environment,
-                  SESSION_PARAMETERS: {}
+                  SESSION_PARAMETERS: {
+                    CLIENT_REQUEST_MFA_TOKEN: false,
+                    CLIENT_STORE_TEMPORARY_CREDENTIAL: false,
+                  }
                 }
             }
         },

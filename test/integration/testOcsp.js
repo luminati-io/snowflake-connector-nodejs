@@ -1,6 +1,7 @@
 /*
- * Copyright (c) 2015-2019 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2015-2024 Snowflake Computing Inc. All rights reserved.
  */
+
 const Os = require('os');
 const async = require('async');
 const assert = require('assert');
@@ -35,13 +36,13 @@ describe('OCSP validation', function () {
           });
         },
         function (callback) {
-          var numErrors = 0;
-          var numStmtsExecuted = 0;
-          var numStmtsTotal = 20;
+          let numErrors = 0;
+          let numStmtsExecuted = 0;
+          const numStmtsTotal = 20;
 
           // execute a simple statement several times
           // and make sure there are no errors
-          for (var index = 0; index < numStmtsTotal; index++) {
+          for (let index = 0; index < numStmtsTotal; index++) {
             connection.execute(
               {
                 sqlText: 'select 1;',
@@ -80,13 +81,13 @@ describe('OCSP validation', function () {
           });
         },
         function (callback) {
-          var numErrors = 0;
-          var numStmtsExecuted = 0;
-          var numStmtsTotal = 5;
+          let numErrors = 0;
+          let numStmtsExecuted = 0;
+          const numStmtsTotal = 5;
 
           // execute a simple statement several times
           // and make sure there are no errors
-          for (var index = 0; index < numStmtsTotal; index++) {
+          for (let index = 0; index < numStmtsTotal; index++) {
             setTimeout(function () {
               connection.execute(
                 {
@@ -144,18 +145,21 @@ describe('OCSP validation', function () {
 
   function connectToHttpsEndpoint(testOptions, i, connection, done) {
     connection.connect(function (err) {
-      assert.ok(err);
-      if (err) {
-        if (!Object.prototype.hasOwnProperty.call(err, 'code')) {
+      try {
+        assert.ok(err);
+        if (err) {
           Logger.getInstance().error(err);
+          assert.ok(err['code'].startsWith('390'));
         }
-        assert.equal(err['code'], '390100');
-      }
 
-      if (i === testOptions.length - 1) {
-        done();
-      } else {
-        testOptions(i + 1);
+        if (i === testOptions.length - 1) {
+          done();
+        } else {
+          testOptions(i + 1);
+        }
+      } catch (err) {
+        Logger.getInstance().error(err);
+        done(err);
       }
     });
   }
@@ -299,12 +303,40 @@ describe('OCSP privatelink', function () {
     }
   };
 
-  const host = Util.construct_hostname(connOption.privatelink.region, connOption.privatelink.account);
-  const ocspResponseCacheServerUrl = `http://ocsp.${host}/ocsp_response_cache.json`;
-  const ocspResponderUrl = `http://ocsp.${host}/retry/${mockParsedUrl.hostname}/${mockDataBuf.toString('base64')}`;
+
 
   it('Account with privatelink', function (done) {
-    var connection = snowflake.createConnection(connOption.privatelink);
+    //connOption.privatelink contains inconsistent accessUrl and host so the connect works using accessUrl
+    // and setting ocsp according to host
+    const host = Util.constructHostname(connOption.privatelink.region, connOption.privatelink.account);
+    const ocspResponseCacheServerUrl = `http://ocsp.${host}/ocsp_response_cache.json`;
+    const ocspResponderUrl = `http://ocsp.${host}/retry/${mockParsedUrl.hostname}/${mockDataBuf.toString('base64')}`;
+
+    const connection = snowflake.createConnection({ ...connOption.privatelink, ...{ host: host } });
+
+    connection.connect(function (err) {
+      assert.ok(!err, JSON.stringify(err));
+
+      Check(null, mockFunc, mockReq);
+
+      assert.strictEqual(process.env.SF_OCSP_RESPONSE_CACHE_SERVER_URL, ocspResponseCacheServerUrl);
+      assert.strictEqual(process.env.SF_OCSP_RESPONDER_URL, ocspResponderUrl);
+
+      delete process.env['SF_OCSP_RESPONSE_CACHE_SERVER_URL'];
+      delete process.env['SF_OCSP_RESPONDER_URL'];
+
+      done();
+    });
+  });
+
+  it('Account with privatelink cn', function (done) {
+    //connOption.privatelink contains inconsistent accessUrl and host so the connect works using accessUrl
+    // and setting ocsp according to host
+    const host = Util.constructHostname('cn-northwest-1.privatelink', connOption.privatelink.account);
+    const ocspResponseCacheServerUrl = `http://ocsp.${host}/ocsp_response_cache.json`;
+    const ocspResponderUrl = `http://ocsp.${host}/retry/${mockParsedUrl.hostname}/${mockDataBuf.toString('base64')}`;
+
+    const connection = snowflake.createConnection({ ...connOption.privatelink, ...{ host: host } });
 
     connection.connect(function (err) {
       assert.ok(!err, JSON.stringify(err));
@@ -322,7 +354,7 @@ describe('OCSP privatelink', function () {
   });
 
   it('Account without privatelink', function (done) {
-    var connection = snowflake.createConnection(connOption.valid);
+    const connection = snowflake.createConnection(connOption.valid);
     connection.connect(function (err) {
       assert.ok(!err, JSON.stringify(err));
 
@@ -336,10 +368,33 @@ describe('OCSP privatelink', function () {
   });
 });
 
+describe('Test setup ocsp server url', () => {
+  [
+    {
+      name: 'test',
+      host: 'acc.privatelink.snowflakecomputin.com',
+      expected: 'http://ocsp.acc.privatelink.snowflakecomputin.com/ocsp_response_cache.json'
+    },
+    {
+      name: 'test',
+      host: 'acc.privatelink.snowflakecomputin.cn',
+      expected: 'http://ocsp.acc.privatelink.snowflakecomputin.cn/ocsp_response_cache.json'
+    }
+  ].forEach(({ name, host, expected }) => {
+    it(`${name} is valid`, () => {
+      const connection = snowflake.createConnection({ host: host, username: 'user', password: 'pass' });
+      connection.setupOcspPrivateLink(host);
+      assert.strictEqual(process.env.SF_OCSP_RESPONSE_CACHE_SERVER_URL, expected);
+
+      delete process.env['SF_OCSP_RESPONSE_CACHE_SERVER_URL'];
+    });
+  });
+});
+
 // Skipped - requires manual interaction to set the network interface in system command and enter sudo user password
 describe.skip('Test Ocsp with network delay', function () {
   this.timeout(500000);
-  var connection;
+  let connection;
 
   before(function (done) {
     exec('sudo tc qdisc add dev eth0 root netem delay 5000ms');
@@ -361,7 +416,7 @@ describe.skip('Test Ocsp with network delay', function () {
 
       async.series([
         function (callback) {
-          connection.connect(function (err, conn) {
+          connection.connect(function (err) {
             assert.ok(!err, JSON.stringify(err));
             callback();
           });

@@ -1,23 +1,36 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2015-2024 Snowflake Computing Inc. All rights reserved.
  */
 
-var assert = require('assert');
-var mock = require('mock-require');
-var SnowflakeEncryptionUtil = require('./../../../lib/file_transfer_agent/encrypt_util').encrypt_util;
+const assert = require('assert');
+const mock = require('mock-require');
+const SnowflakeEncryptionUtil = require('./../../../lib/file_transfer_agent/encrypt_util').EncryptUtil;
+
+function readKeyLength(algorithmName) {
+  switch (algorithmName) {
+  case 'aes-128-cbc':
+  case 'aes-128-ecb':
+    return 128;
+  case 'aes-256-cbc':
+  case 'aes-256-ecb':
+    return 256;
+  default:
+    throw new Error('Algorithm was not recognized!');
+  }
+}
 
 describe('Encryption util', function () {
-  var encryptionMaterial;
-  var mockData = 'mockData';
-  var mockFileName = 'mockFileName';
-  var mockRandomBytes = 'mockRandomBytes';
-  var mockTmpDir = 'mockTmpDir';
-  var mockTmpName = 'mockTmpName';
+  let encryptionMaterial;
+  const mockData = 'mockData';
+  const mockFileName = 'mockFileName';
+  const mockRandomBytes = 'mockRandomBytes';
+  const mockTmpDir = 'mockTmpDir';
+  const mockTmpName = 'mockTmpName';
 
-  var EncryptionUtil;
-  var encrypt;
-  var filestream;
-  var temp;
+  let EncryptionUtil;
+  let encrypt;
+  let filestream;
+  let temp;
 
   this.beforeEach(function () {
     encryptionMaterial = {
@@ -27,13 +40,23 @@ describe('Encryption util', function () {
     };
 
     mock('encrypt', {
-      randomBytes: function (options) {
-        return Buffer.from(mockRandomBytes);
+      randomBytes: function (byteLength) {
+        let randomString = '';
+        while (mockRandomBytes.length < byteLength) {
+          randomString = randomString + mockRandomBytes;
+          byteLength = byteLength - mockRandomBytes.length;
+        }
+        randomString = randomString + mockRandomBytes.substring(0, byteLength);
+        return Buffer.from(randomString);
       },
-      createCipheriv: function (AES_CBC, fileKey, ivData) {
+      createCipheriv: function (algorithm, key) {
+        const expectedKeyLength = readKeyLength(algorithm);
+        if (key.length * 8 !== expectedKeyLength) {
+          throw new Error('Invalid key length!');
+        }
         function createCipheriv() {
           this.update = function (data) {
-            function update(data) {
+            function update() {
               return Buffer.from(mockData.substring(0, 4));
             }
             return new update(data);
@@ -49,7 +72,7 @@ describe('Encryption util', function () {
       }
     });
     mock('filestream', {
-      createReadStream: function (inFileName, options) {
+      createReadStream: function () {
         function createReadStream() {
           this.on = function (event, callback) {
             callback();
@@ -58,9 +81,9 @@ describe('Encryption util', function () {
         }
         return new createReadStream;
       },
-      createWriteStream: function (options) {
+      createWriteStream: function () {
         function createWriteStream() {
-          this.write = function (data) {
+          this.write = function () {
             return;
           };
           this.close = function (resolve) {
@@ -70,18 +93,18 @@ describe('Encryption util', function () {
         }
         return new createWriteStream;
       },
-      closeSync: function (fd) {
+      closeSync: function () {
         return;
       }
     });
     mock('temp', {
-      fileSync: function (options) {
+      fileSync: function () {
         return {
           name: mockTmpName,
           fd: 0
         };
       },
-      openSync: function (options) {
+      openSync: function () {
         return;
       }
     });
@@ -93,13 +116,13 @@ describe('Encryption util', function () {
     EncryptionUtil = new SnowflakeEncryptionUtil(encrypt, filestream, temp);
   });
 
-  it('encrypt file', async function () {
-    var result = await EncryptionUtil.encryptFile(encryptionMaterial, mockFileName, mockTmpDir);
+  async function runEncryptionTest() {
+    const result = await EncryptionUtil.encryptFile(encryptionMaterial, mockFileName, mockTmpDir);
 
-    var decodedKey = Buffer.from(encryptionMaterial['queryStageMasterKey'], 'base64');
-    var keySize = decodedKey.length;
+    const decodedKey = Buffer.from(encryptionMaterial['queryStageMasterKey'], 'base64');
+    const keySize = decodedKey.length;
 
-    var matDesc = {
+    let matDesc = {
       'smkId': encryptionMaterial.smkId,
       'queryId': encryptionMaterial.queryId,
       'keySize': keySize * 8
@@ -109,7 +132,16 @@ describe('Encryption util', function () {
     matDesc = JSON.stringify(matDesc);
 
     assert.strictEqual(result.encryptionMetadata.key, Buffer.from(mockData).toString('base64'));
-    assert.strictEqual(result.encryptionMetadata.iv, Buffer.from(mockRandomBytes).toString('base64'));
+    assert.strictEqual(result.encryptionMetadata.iv, encrypt.randomBytes(16).toString('base64'));
     assert.strictEqual(result.encryptionMetadata.matDesc, matDesc);
+  }
+
+  it('encrypt file with AES-128', async function () {
+    await runEncryptionTest();
+  });
+
+  it('encrypt file with AES-256', async function () {
+    encryptionMaterial.queryStageMasterKey = 'QUJDREFCQ0RBQkNEQUJDREFCQ0RBQkNEQUJDREFCQ0Q=';
+    await runEncryptionTest();
   });
 });

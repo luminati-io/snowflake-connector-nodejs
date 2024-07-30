@@ -1,10 +1,10 @@
 /*
- * Copyright (c) 2015-2019 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2015-2024 Snowflake Computing Inc. All rights reserved.
  */
+
 const assert = require('assert');
 const async = require('async');
 const testUtil = require('./testUtil');
-const { configureLogger } = require('../configureLogger');
 const { randomizeName } = require('./testUtil');
 
 describe('Large result Set Tests', function () {
@@ -27,8 +27,8 @@ describe('Large result Set Tests', function () {
       sqlText: selectAllFromOrders,
       complete: function (err, stmt) {
         testUtil.checkError(err);
-        var stream = stmt.streamRows();
-        var rowCount = 0;
+        const stream = stmt.streamRows();
+        let rowCount = 0;
         stream.on('data', function () {
           rowCount++;
         });
@@ -49,8 +49,8 @@ describe('Large result Set Tests', function () {
       sqlText: selectAllFromOrders,
       complete: function (err, stmt) {
         testUtil.checkError(err);
-        var rowCount = 0;
-        var stream = stmt.streamRows({
+        let rowCount = 0;
+        const stream = stmt.streamRows({
           start: offset
         });
         stream.on('data', function () {
@@ -73,8 +73,8 @@ describe('Large result Set Tests', function () {
       sqlText: selectAllFromOrders,
       complete: function (err, stmt) {
         testUtil.checkError(err);
-        var rowCount = 0;
-        var stream = stmt.streamRows({
+        let rowCount = 0;
+        const stream = stmt.streamRows({
           start: offset
         });
         stream.on('data', function () {
@@ -186,8 +186,8 @@ describe('Large result Set Tests', function () {
               if (err) {
                 callback(err);
               } else {
-                var stream = stmt.streamRows();
-                var rowCount = 0;
+                const stream = stmt.streamRows();
+                let rowCount = 0;
                 stream.on('data', function () {
                   rowCount++;
                 });

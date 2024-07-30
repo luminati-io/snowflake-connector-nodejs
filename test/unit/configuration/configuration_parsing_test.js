@@ -1,13 +1,79 @@
 /*
- * Copyright (c) 2023 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2015-2024 Snowflake Computing Inc. All rights reserved.
  */
+
 const assert = require('assert');
 const { Levels, ConfigurationUtil } = require('./../../../lib/configuration/client_configuration');
+const { loadConnectionConfiguration } = require('./../../../lib/configuration/connection_configuration');
 const getClientConfig = new ConfigurationUtil().getClientConfig;
 const fsPromises = require('fs/promises');
 const os = require('os');
 const path = require('path');
 let tempDir = null;
+
+describe('should parse toml connection configuration', function () {
+
+  afterEach( function () {
+    delete process.env.SNOWFLAKE_HOME;
+    delete process.env.SNOWFLAKE_DEFAULT_CONNECTION_NAME;
+  });
+
+  it('should parse toml with connection configuration: ', async function () {
+    process.env.SNOWFLAKE_HOME = process.cwd() + '/test';
+    const configuration = await loadConnectionConfiguration();
+    assert.strictEqual(configuration['account'], 'snowdriverswarsaw.us-west-2.aws');
+    assert.strictEqual(configuration['username'], 'test_user');
+    assert.strictEqual(configuration['password'], 'test_pass');
+    assert.strictEqual(configuration['warehouse'], 'testw');
+    assert.strictEqual(configuration['database'], 'test_db');
+    assert.strictEqual(configuration['schema'], 'test_nodejs');
+    assert.strictEqual(configuration['protocol'], 'https');
+    assert.strictEqual(configuration['port'], '443');
+  });
+
+  it('should parse toml with connection configuration - oauth', async function () {
+    process.env.SNOWFLAKE_HOME = process.cwd() + '/test/';
+    process.env.SNOWFLAKE_DEFAULT_CONNECTION_NAME = 'aws-oauth';
+    const configuration = await loadConnectionConfiguration();
+    assert.strictEqual(configuration['token'], 'token_value');
+    assert.strictEqual(configuration['authenticator'], 'oauth');
+  });
+
+  it('should throw exception when token file does not exist', async function () {
+    process.env.SNOWFLAKE_HOME = process.cwd() + '/test/';
+    process.env.SNOWFLAKE_DEFAULT_CONNECTION_NAME = 'aws-oauth-file';
+    try {
+      await loadConnectionConfiguration();
+    } catch (error) {
+      assert.match(error.message, /ENOENT: no such file or directory/);
+      assert.match(error.message, /token/);
+    }
+  });
+
+  it('should throw error toml when file does not exist',  function (done) {
+    process.env.SNOWFLAKE_HOME = '/unknown/';
+    try {
+      loadConnectionConfiguration();
+      assert.fail();
+    } catch (error) {
+      assert.match(error.message, /ENOENT: no such file or directory/);
+      done();
+    }
+  });
+
+  it('should throw exception if configuration does not exists', function (done) {
+    process.env.SNOWFLAKE_DEFAULT_CONNECTION_NAME = 'unknown';
+    process.env.SNOWFLAKE_HOME = process.cwd() + '/test/';
+
+    try {
+      loadConnectionConfiguration();
+      assert.fail();
+    } catch (error) {
+      assert.strictEqual(error.message, 'Connection configuration with name unknown does not exist');
+      done();
+    }
+  });
+});
 
 describe('Configuration parsing tests', function () {
 
@@ -67,6 +133,24 @@ describe('Configuration parsing tests', function () {
         "common": {} 
      }`
     },
+    {
+      testCaseName: 'config with known values and unknown key',
+      fileContent: `{
+            "common": {
+                "log_level": "ERROR",
+                "log_path": null,
+                "unknown_key": "unknown_value"
+            } 
+        }`
+    },
+    {
+      testCaseName: 'config with unknown key',
+      fileContent: `{
+            "common": {
+                "unknown_key": "unknown_value"
+            } 
+        }`
+    }
   ].forEach(({ testCaseName, fileContent }) => {
     it('should parse config without values: ' + testCaseName, async function () {
       // given
@@ -107,9 +191,10 @@ describe('Configuration parsing tests', function () {
   });
 
   it('should fail when config file does not exist', async function () {
+    const filePath = './not-existing-config.json';
     // expect
     await assert.rejects(
-      async () => await getClientConfig('./not-existing-config.json'),
+      async () => await getClientConfig(filePath),
       (err) => {
         assert.strictEqual(err.name, 'ConfigurationError');
         assert.strictEqual(err.message, 'Finding client configuration failed');
