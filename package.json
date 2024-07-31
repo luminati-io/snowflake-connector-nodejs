@@ -1,6 +1,6 @@
 {
   "name": "@luminati-io/snowflake-sdk",
-  "version": "1.11.0-lum.3",
+  "version": "1.11.0-lum.4",
   "description": "Node.js driver for Snowflake",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.388.0",
